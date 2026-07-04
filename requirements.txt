@@ -1,5 +1,3 @@
-# `[voice]` extra pulls in PyNaCl AND davey (discord.py 2.7's new voice backend).
-# Installing PyNaCl by itself is not enough — voice will be disabled.
 discord.py[voice]>=2.7.0
 yt-dlp>=2024.10.0
 python-dotenv>=1.0.0

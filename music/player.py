@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import enum
 import logging
 from typing import Optional
 
@@ -11,6 +12,12 @@ from .config import FFMPEG_OPTIONS, IDLE_TIMEOUT_SECONDS
 from .source import Track
 
 log = logging.getLogger(__name__)
+
+
+class LoopMode(str, enum.Enum):
+    OFF = "off"
+    TRACK = "track"
+    QUEUE = "queue"
 
 
 class GuildPlayer:
@@ -30,6 +37,8 @@ class GuildPlayer:
         self.voice: Optional[discord.VoiceClient] = None
         self.text_channel: Optional[discord.abc.Messageable] = None
         self._task: Optional[asyncio.Task[None]] = None
+        self.loop_mode: LoopMode = LoopMode.OFF
+        self._skip_requested: bool = False
 
     def ensure_running(self) -> None:
         if self._task is None or self._task.done():
@@ -62,6 +71,7 @@ class GuildPlayer:
     def skip(self) -> bool:
         """Stop the current source so the player loop advances. Returns True if there was something to skip."""
         if self.voice and (self.voice.is_playing() or self.voice.is_paused()):
+            self._skip_requested = True
             self.voice.stop()
             return True
         return False
@@ -128,37 +138,54 @@ class GuildPlayer:
                     )
                     return
 
-                self.current = track
-                self._track_finished.clear()
+                first_play = True
+                while True:
+                    self.current = track
+                    self._track_finished.clear()
 
-                source = discord.FFmpegPCMAudio(track.stream_url, **FFMPEG_OPTIONS)
-
-                def _after(err: Optional[Exception]) -> None:
-                    if err:
-                        log.error(
-                            "FFmpeg playback error in guild %s: %s",
-                            self.guild_id,
-                            err,
-                        )
-                    self.bot.loop.call_soon_threadsafe(self._track_finished.set)
-
-                try:
-                    self.voice.play(source, after=_after)
-                except discord.ClientException:
-                    log.exception(
-                        "voice.play() failed in guild %s", self.guild_id
+                    source = discord.FFmpegPCMAudio(
+                        track.stream_url, **FFMPEG_OPTIONS
                     )
-                    self.current = None
-                    continue
 
-                await self._set_presence(track)
-                await self._announce(
-                    f"🎵 Now playing: **{track.title}** "
-                    f"`[{track.pretty_duration()}]`"
-                )
+                    def _after(err: Optional[Exception]) -> None:
+                        if err:
+                            log.error(
+                                "FFmpeg playback error in guild %s: %s",
+                                self.guild_id,
+                                err,
+                            )
+                        self.bot.loop.call_soon_threadsafe(
+                            self._track_finished.set
+                        )
 
-                await self._track_finished.wait()
+                    try:
+                        self.voice.play(source, after=_after)
+                    except discord.ClientException:
+                        log.exception(
+                            "voice.play() failed in guild %s", self.guild_id
+                        )
+                        self.current = None
+                        break
+
+                    if first_play:
+                        await self._set_presence(track)
+                        await self._announce(
+                            f"🎵 Now playing: **{track.title}** "
+                            f"`[{track.pretty_duration()}]`"
+                        )
+                        first_play = False
+
+                    await self._track_finished.wait()
+
+                    if self._skip_requested or self.loop_mode != LoopMode.TRACK:
+                        self._skip_requested = False
+                        break
+
                 self.current = None
+
+                if self.loop_mode == LoopMode.QUEUE:
+                    await self.queue.put(track)
+
                 if self.queue.empty():
                     await self._clear_presence()
         except asyncio.CancelledError:

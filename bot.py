@@ -86,6 +86,9 @@ class CoachWhoPlaysBot(commands.Bot):
             self.tree.copy_global_to(guild=guild)
             synced = await self.tree.sync(guild=guild)
             log.info("Synced %d command(s) to dev guild %s", len(synced), dev_guild_id)
+            
+            self.tree.clear_commands(guild=None)
+            await self.tree.sync()
         else:
             synced = await self.tree.sync()
             log.info("Synced %d command(s) globally", len(synced))

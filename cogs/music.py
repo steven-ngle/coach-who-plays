@@ -6,7 +6,7 @@ import yt_dlp
 from discord import app_commands
 from discord.ext import commands
 
-from music import GuildPlayer, extract_tracks
+from music import GuildPlayer, LoopMode, extract_tracks
 
 log = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class Music(commands.Cog):
                 "Nothing is playing right now.", ephemeral=True
             )
             return
-        await interaction.response.send_message("⏭ Skipped.")
+        await interaction.response.send_message("⏭️ Skipped.")
 
     @app_commands.command(name="pause", description="Pause the current song.")
     async def pause(self, interaction: discord.Interaction) -> None:
@@ -135,7 +135,32 @@ class Music(commands.Cog):
             )
             return
         voice.pause()
-        await interaction.response.send_message("⏸ Paused.")
+        await interaction.response.send_message("⏸️ Paused.")
+
+    @app_commands.command(name="loop", description="Set loop mode: off, track, or queue.")
+    @app_commands.describe(mode="What to loop.")
+    @app_commands.choices(
+        mode=[
+            app_commands.Choice(name="off", value=LoopMode.OFF.value),
+            app_commands.Choice(name="current track", value=LoopMode.TRACK.value),
+            app_commands.Choice(name="queue", value=LoopMode.QUEUE.value),
+        ]
+    )
+    async def loop(
+        self,
+        interaction: discord.Interaction,
+        mode: app_commands.Choice[str],
+    ) -> None:
+        if interaction.guild_id is None:
+            return
+        player = self._player_for(interaction.guild_id)
+        player.loop_mode = LoopMode(mode.value)
+        labels = {
+            LoopMode.OFF.value: "⏹️ off",
+            LoopMode.TRACK.value: "🔂 current track",
+            LoopMode.QUEUE.value: "🔁 queue",
+        }
+        await interaction.response.send_message(f"Loop: {labels[mode.value]}")
 
     @app_commands.command(name="resume", description="Resume the paused song.")
     async def resume(self, interaction: discord.Interaction) -> None:
@@ -147,7 +172,7 @@ class Music(commands.Cog):
             )
             return
         voice.resume()
-        await interaction.response.send_message("▶ Resumed.")
+        await interaction.response.send_message("▶️ Resumed.")
 
     @app_commands.command(
         name="stop",
@@ -159,13 +184,13 @@ class Music(commands.Cog):
         player = self._players.pop(interaction.guild_id, None)
         if player is not None:
             await player.shutdown()
-            await interaction.response.send_message("⏹ Stopped and disconnected.")
+            await interaction.response.send_message("⏹️ Stopped and disconnected.")
             return
 
         guild = interaction.guild
         if guild and guild.voice_client:
             await guild.voice_client.disconnect(force=False)
-            await interaction.response.send_message("⏹ Disconnected.")
+            await interaction.response.send_message("⏹️ Disconnected.")
             return
 
         await interaction.response.send_message(
@@ -220,6 +245,10 @@ class Music(commands.Cog):
                 )
             if len(upcoming) > 10:
                 lines.append(f"… and **{len(upcoming) - 10}** more")
+
+        if player.loop_mode is not LoopMode.OFF:
+            loop_label = "🔂 track" if player.loop_mode is LoopMode.TRACK else "🔁 queue"
+            lines.append(f"**Loop:** {loop_label}")
 
         await interaction.response.send_message(
             "\n".join(lines), allowed_mentions=discord.AllowedMentions.none()

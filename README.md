@@ -95,6 +95,7 @@ the ID).
 | `/skip` | Skip the current track. |
 | `/pause` | Pause the current track. |
 | `/resume` | Resume a paused track. |
+| `/loop <off\|track\|queue>` | Set loop mode. `track` replays the current song; `queue` cycles the whole list. |
 | `/stop` | Stop, clear queue, disconnect. |
 | `/ping` | Health-check; reports gateway latency. |
 
