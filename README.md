@@ -24,6 +24,31 @@ per-guild queue.
   every non-bot member leaves the voice channel.
 - Per-guild queue isolation; safe cog reloads.
 
+## How it works
+
+```mermaid
+flowchart TD
+    A["User runs /play &lt;query&gt; in Discord"] --> B[Bot joins the caller's voice channel]
+    B --> C{"What is the query?"}
+
+    C -->|"Spotify URL<br/>(track / playlist / album)"| D[spotipy resolves 'Artist - Title' strings]
+    D --> E[Parallel YouTube searches via yt-dlp]
+
+    C -->|"YouTube URL"| F[yt-dlp extracts stream URL]
+
+    C -->|"Plain text"| G[yt-dlp searches YouTube for top match]
+
+    E --> H[(Per-guild queue)]
+    F --> H
+    G --> H
+
+    H --> I[Player loop pulls next track]
+    I --> J["FFmpeg decodes the audio stream<br/>(discards video, opus-encodes)"]
+    J --> K[Audio streamed into the Discord voice channel]
+
+    I -.->|"queue empty for 5 min<br/>or channel emptied"| L[Auto-disconnect]
+```
+
 ## Requirements
 
 - Python 3.11+
