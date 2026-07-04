@@ -1,9 +1,6 @@
 # Secrets
 .env
 .spotify-cache
-# spotipy's default cache path — falls back to this if `cache_path` isn't
-# passed explicitly. Holds an access token when running under Client
-# Credentials, so keep it out of the repo.
 .cache
 
 # Python
