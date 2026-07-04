@@ -82,6 +82,27 @@ class GuildPlayer:
         except discord.HTTPException:
             log.debug("Failed to send announcement in guild %s", self.guild_id)
 
+    async def _set_presence(self, track: Track) -> None:
+        try:
+            await self.bot.change_presence(
+                activity=discord.Activity(
+                    type=discord.ActivityType.listening,
+                    name=track.title[:128],  # Discord caps activity names
+                )
+            )
+            setattr(self.bot, "_music_presence_owner", self)
+        except Exception:
+            log.debug("change_presence failed", exc_info=True)
+
+    async def _clear_presence(self) -> None:
+        if getattr(self.bot, "_music_presence_owner", None) is not self:
+            return
+        try:
+            await self.bot.change_presence(activity=None)
+            setattr(self.bot, "_music_presence_owner", None)
+        except Exception:
+            log.debug("change_presence(None) failed", exc_info=True)
+
     async def _run(self) -> None:
         log.info("Player loop started for guild %s", self.guild_id)
         try:
@@ -130,6 +151,7 @@ class GuildPlayer:
                     self.current = None
                     continue
 
+                await self._set_presence(track)
                 await self._announce(
                     f"🎵 Now playing: **{track.title}** "
                     f"`[{track.pretty_duration()}]`"
@@ -137,10 +159,13 @@ class GuildPlayer:
 
                 await self._track_finished.wait()
                 self.current = None
+                if self.queue.empty():
+                    await self._clear_presence()
         except asyncio.CancelledError:
             log.info("Player loop cancelled for guild %s", self.guild_id)
             raise
         except Exception:
             log.exception("Player loop crashed for guild %s", self.guild_id)
         finally:
+            await self._clear_presence()
             await self._disconnect_voice()
