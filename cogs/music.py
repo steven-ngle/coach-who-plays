@@ -125,6 +125,30 @@ class Music(commands.Cog):
             return
         await interaction.response.send_message("⏭ Skipped.")
 
+    @app_commands.command(name="pause", description="Pause the current song.")
+    async def pause(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        voice = guild.voice_client if guild else None
+        if voice is None or not voice.is_playing():
+            await interaction.response.send_message(
+                "Nothing is playing right now.", ephemeral=True
+            )
+            return
+        voice.pause()
+        await interaction.response.send_message("⏸ Paused.")
+
+    @app_commands.command(name="resume", description="Resume the paused song.")
+    async def resume(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        voice = guild.voice_client if guild else None
+        if voice is None or not voice.is_paused():
+            await interaction.response.send_message(
+                "Nothing is paused.", ephemeral=True
+            )
+            return
+        voice.resume()
+        await interaction.response.send_message("▶ Resumed.")
+
     @app_commands.command(
         name="stop",
         description="Stop playback, clear the queue, and leave the voice channel.",

@@ -1,6 +1,6 @@
 # coach who plays
 
-A small, modern Discord music bot. Slash-command only, written in Python with
+A small Discord music bot. Slash-command only, written in Python with
 [discord.py](https://github.com/Rapptz/discord.py) and
 [yt-dlp](https://github.com/yt-dlp/yt-dlp). Joins your voice channel, plays
 audio from YouTube/SoundCloud links or a free-text search, and manages a
@@ -93,6 +93,8 @@ the ID).
 | `/queue` | Show what's playing and the next ten tracks. |
 | `/nowplaying` | Title, duration, link, requester. |
 | `/skip` | Skip the current track. |
+| `/pause` | Pause the current track. |
+| `/resume` | Resume a paused track. |
 | `/stop` | Stop, clear queue, disconnect. |
 | `/ping` | Health-check; reports gateway latency. |
 
