@@ -6,7 +6,7 @@ import yt_dlp
 from discord import app_commands
 from discord.ext import commands
 
-from music import GuildPlayer, LoopMode, extract_tracks
+from music import GuildPlayer, LoopMode, SpotifyError, extract_tracks
 
 log = logging.getLogger(__name__)
 
@@ -75,6 +75,9 @@ class Music(commands.Cog):
 
         try:
             tracks = await extract_tracks(query, interaction.user)
+        except SpotifyError as e:
+            await interaction.followup.send(f"⚠️ {e}", ephemeral=True)
+            return
         except yt_dlp.utils.DownloadError as e:
             log.warning("yt-dlp DownloadError for %r: %s", query, e)
             await interaction.followup.send(
@@ -82,7 +85,7 @@ class Music(commands.Cog):
             )
             return
         except Exception:
-            log.exception("yt-dlp failed for query %r", query)
+            log.exception("extraction failed for query %r", query)
             await interaction.followup.send(
                 "Something went wrong fetching that track.", ephemeral=True
             )
